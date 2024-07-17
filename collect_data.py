@@ -7,7 +7,7 @@ from mininet.log import setLogLevel, info
 def collect_data(net):
     with open("network_data.csv", "w") as f:
         f.write("time,source,destination,bandwidth,latency,packet_loss\n")
-        for i in range(3 * 60):  # جمع البيانات كل دقيقة لمدة 3 ساعات
+        for i in range(3 * 1):  # جمع البيانات كل دقيقة لمدة 3 ساعات
             for src in net.hosts:
                 for dst in net.hosts:
                     if src != dst:
