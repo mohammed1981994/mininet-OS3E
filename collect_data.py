@@ -1,5 +1,5 @@
 from mininet.net import Mininet
-from mininet.node import RemoteController, Controller
+from mininet.node import RemoteController, Controller, OVSSwitch
 from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
@@ -60,12 +60,12 @@ def collect_data(net):
 
 def setup_network():
     topo = OS3EGraph()
-    net = Mininet(controller=Controller, link=TCLink)
+    net = Mininet(controller=Controller, link=TCLink, switch=OVSSwitch)
     c0 = net.addController(name='c0')
     
     switches = {}
-    for node in topo.nodes:
-        switches[node] = net.addSwitch(f's{node}')
+    for i, node in enumerate(topo.nodes, 1):
+        switches[node] = net.addSwitch(f's{i}', dpid=f'{i:016x}')
     
     for src, dst in topo.edges:
         net.addLink(switches[src], switches[dst])
