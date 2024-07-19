@@ -1,3 +1,4 @@
+import os
 from mininet.net import Mininet
 from mininet.node import RemoteController, Controller, OVSSwitch
 from mininet.link import TCLink
@@ -59,6 +60,7 @@ def collect_data(net):
             time.sleep(60)  # الانتظار لمدة دقيقة قبل إعادة القياس
 
 def setup_network():
+    os.system('sudo mn -c')
     topo = OS3EGraph()
     net = Mininet(controller=Controller, link=TCLink, switch=OVSSwitch)
     c0 = net.addController(name='c0')
