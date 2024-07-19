@@ -3,26 +3,73 @@ from mininet.node import RemoteController, Controller
 from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
-from Topology import OS3ETopo
+import time
+import json
+import geo
+import networkx as nx
+
+def OS3EGraph():
+    g = nx.Graph()
+    paths = [
+        ["Vancouver", "Seattle"],
+        ["Seattle", "Missoula", "Minneapolis", "Chicago"],
+        ["Seattle", "SaltLakeCity"],
+        ["Seattle", "Portland", "Sunnyvale"],
+        ["Sunnyvale", "SaltLakeCity"],
+        ["Sunnyvale", "LosAngeles"],
+        ["LosAngeles", "SaltLakeCity"],
+        ["LosAngeles", "Tucson", "ElPaso"],
+        ["SaltLakeCity", "Denver"],
+        ["Denver", "Albuquerque", "ElPaso"],
+        ["Denver", "KansasCity", "Chicago"],
+        ["KansasCity", "Dallas", "Houston"],
+        ["ElPaso", "Houston"],
+        ["Houston", "Jackson", "Memphis", "Nashville"],
+        ["Houston", "BatonRouge", "Jacksonville"],
+        ["Chicago", "Indianapolis", "Louisville", "Nashville"],
+        ["Nashville", "Atlanta"],
+        ["Atlanta", "Jacksonville"],
+        ["Jacksonville", "Miami"],
+        ["Chicago", "Cleveland"],
+        ["Cleveland", "Buffalo", "Boston", "NewYork", "Philadelphia", "Washington"],
+        ["Cleveland", "Pittsburgh", "Ashburn", "Washington"],
+        ["Washington", "Raleigh", "Atlanta"]
+    ]
+    
+    for path in paths:
+        for i in range(len(path) - 1):
+            g.add_edge(path[i], path[i+1])
+    
+    return g
 
 def collect_data(net):
     with open("network_data.csv", "w") as f:
         f.write("time,source,destination,bandwidth,latency,packet_loss\n")
-        for i in range(3 * 60):  # جمع البيانات كل دقيقة لمدة 3 ساعات
+        end_time = time.time() + 3 * 3600  # 3 ساعات من الآن
+        while time.time() < end_time:
             for src in net.hosts:
                 for dst in net.hosts:
                     if src != dst:
-                        result = net.ping([src, dst], timeout=1)
-                        bandwidth = net.iperf([src, dst], seconds=5)
-                        latency = result[0]
-                        packet_loss = result[1]
-                        f.write(f"{time.time()},{src},{dst},{bandwidth},{latency},{packet_loss}\n")
-            time.sleep(60)
+                        latency = net.ping([src, dst], timeout=1)
+                        src.cmd('iperf -s &')
+                        bandwidth = dst.cmd('iperf -c %s -t 5' % src.IP())
+                        src.cmd('kill %iperf')
+                        packet_loss = 0  # افتراض عدم فقدان الحزم
+                        f.write(f"{time.time()},{src.IP()},{dst.IP()},{bandwidth.strip()},{latency},{packet_loss}\n")
+            time.sleep(60)  # الانتظار لمدة دقيقة قبل إعادة القياس
 
 def setup_network():
-    net = Mininet(topo=OS3ETopo(), controller=Controller, link=TCLink)
+    topo = OS3EGraph()
+    net = Mininet(controller=Controller, link=TCLink)
     c0 = net.addController(name='c0')
-
+    
+    switches = {}
+    for node in topo.nodes:
+        switches[node] = net.addSwitch(f's{node}')
+    
+    for src, dst in topo.edges:
+        net.addLink(switches[src], switches[dst])
+    
     net.build()
     c0.start()
     for switch in net.switches:
